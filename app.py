@@ -8,7 +8,6 @@ import time
 
 app = Flask(__name__)
 
-# Global variables to track the simulator process
 simulator_process = None
 simulator_thread = None
 is_running = False
@@ -19,13 +18,18 @@ def load_config():
         with open('config.json', 'r') as f:
             return json.load(f)
     except FileNotFoundError:
-        # Default config if file doesn't exist
         return {
             "broker": "mosquitto",
             "port": 1883,
             "client_id": "multi_line_sim",
             "random_seed": 42,
-            "lines": {"1": 1, "2": 2, "3": 3, "4": 4}
+            "lines": {"1": 1, "2": 2, "3": 3, "4": 4},
+            "tick_time": 1,
+            "failure_probability": 0.1,
+            "failure_status_min": 4,
+            "failure_status_max": 6,
+            "failure_duration_min": 30,
+            "failure_duration_max": 120
         }
 
 def save_config(config):
@@ -65,35 +69,38 @@ def update_config():
     """Update configuration from form data"""
     config = load_config()
     
-    # Update basic settings
     config['broker'] = request.form.get('broker', config['broker'])
     config['port'] = int(request.form.get('port', config['port']))
     config['client_id'] = request.form.get('client_id', config['client_id'])
     config['random_seed'] = int(request.form.get('random_seed', config['random_seed']))
     
-    # Update lines configuration
-    lines = {}
-    line_count = int(request.form.get('line_count', len(config['lines'])))
+    config['tick_time'] = float(request.form.get('tick_time', config.get('tick_time', 1)))
+    config['failure_probability'] = float(request.form.get('failure_probability', config.get('failure_probability', 0.1)))
+    config['failure_status_min'] = int(request.form.get('failure_status_min', config.get('failure_status_min', 4)))
+    config['failure_status_max'] = int(request.form.get('failure_status_max', config.get('failure_status_max', 6)))
+    config['failure_duration_min'] = int(request.form.get('failure_duration_min', config.get('failure_duration_min', 30)))
+    config['failure_duration_max'] = int(request.form.get('failure_duration_max', config.get('failure_duration_max', 120)))
     
-    for i in range(1, line_count + 1):
-        cell_count = int(request.form.get(f'line_{i}_cells', 1))
-        lines[str(i)] = cell_count
+    lines = {}
+    for key in request.form.keys():
+        if key.startswith('line_') and key.endswith('_cells'):
+            line_num = key.split('_')[1]
+            cell_count = int(request.form.get(key, 1))
+            lines[line_num] = cell_count
     
     config['lines'] = lines
     save_config(config)
-    
     return redirect(url_for('index'))
 
 @app.route('/start_simulator', methods=['POST'])
 def start_simulator():
     """Start the simulator"""
     global simulator_thread, is_running
-    
     if not is_running:
         simulator_thread = threading.Thread(target=run_simulator)
+        simulator_thread.daemon = True  
         simulator_thread.start()
-        time.sleep(1)  # Give it a moment to start
-    
+        time.sleep(1)  
     return redirect(url_for('index'))
 
 @app.route('/stop_simulator', methods=['POST'])
