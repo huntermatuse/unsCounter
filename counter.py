@@ -63,12 +63,16 @@ while True:
                 state["status_duration"] = int(duration_seconds / tick_time)
                 state["status_timer"] = 0
             else:
-                infeed = state["I"]
-                outfeed = infeed - 2 if infeed >= 2 else 0
-                reject = infeed - outfeed if infeed > outfeed else 0
-                client.publish(f"{topic_base}/infeed", infeed)
-                client.publish(f"{topic_base}/outfeed", outfeed)
-                client.publish(f"{topic_base}/reject", reject)
+                infeed = { "value": state["I"], "timestamp": time.time() }
+                outfeed_value: int = infeed["value"] - 2 if infeed["value"] >= 2 else 0
+                outfeed = { "value": outfeed_value, "timestamp": time.time() }
+                reject_value: int = infeed["value"] - outfeed["value"] if infeed["value"] > outfeed["value"] else 0
+                reject = { "value": reject_value, "timestamp": time.time() }
+                
+                client.publish(f"{topic_base}/infeed", json.dumps(infeed))
+                client.publish(f"{topic_base}/outfeed", json.dumps(outfeed))
+                client.publish(f"{topic_base}/reject", json.dumps(reject))
+                
                 print(f"[{line}/{cell}] status: 1 | infeed: {infeed}, outfeed: {outfeed}, reject: {reject}")
                 state["I"] += 1
         else:
@@ -79,6 +83,6 @@ while True:
                 state["status_timer"] = 0
                 state["status_duration"] = 0
         
-        client.publish(f"{topic_base}/status", state["status"])
+        client.publish(f"{topic_base}/status", json.dumps({ "value": state["status"], "timestamp": time.time() }))
     
     time.sleep(tick_time)
