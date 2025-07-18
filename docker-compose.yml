@@ -1,14 +1,16 @@
 services:
   mosquitto:
     image: eclipse-mosquitto
+    user: "${UID}:${GID}"
     ports:
       - "18883:1883"
     volumes:
       - ./mqtt_config:/mosquitto/config
     restart: unless-stopped
-
+    
   webui:
     build: .
+    user: "${UID}:${GID}"
     depends_on:
       - mosquitto
     ports:
