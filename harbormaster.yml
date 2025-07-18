@@ -1,0 +1,7 @@
+apps:
+  unsCounter:
+    branch: main
+    compose_config:
+    - docker-compose.yml
+    enabled: true
+    url: https://github.com/huntermatuse/unsCounter.git
