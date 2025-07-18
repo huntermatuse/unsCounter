@@ -1,0 +1,22 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    ports:
+      - "18883:1883"
+    volumes:
+      - ./mqtt_config:/mosquitto/config
+    restart: unless-stopped
+
+  webui:
+    build: .
+    depends_on:
+      - mosquitto
+    ports:
+      - "19033:19033"
+    volumes:
+      - ./config.json:/app/config.json
+      - ./templates:/app/templates
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python app.py

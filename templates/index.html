@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Simulator Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .running {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .stopped {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .lines-config {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .line-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .line-item label {
+            margin-right: 10px;
+            min-width: 80px;
+        }
+        .line-item input {
+            width: 100px;
+        }
+        .buttons {
+            text-align: center;
+            margin-top: 30px;
+        }
+        button {
+            padding: 12px 30px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .add-line {
+            background-color: #17a2b8;
+            color: white;
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+        .add-line:hover {
+            background-color: #138496;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MQTT Simulator Control Panel</h1>
+        
+        <div class="status {% if is_running %}running{% else %}stopped{% endif %}">
+            Status: {% if is_running %}Running{% else %}Stopped{% endif %}
+        </div>
+        
+        <form method="POST" action="/update_config">
+            <div class="form-group">
+                <label for="broker">MQTT Broker:</label>
+                <input type="text" id="broker" name="broker" value="{{ config.broker }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="port">Port:</label>
+                <input type="number" id="port" name="port" value="{{ config.port }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="client_id">Client ID:</label>
+                <input type="text" id="client_id" name="client_id" value="{{ config.client_id }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="random_seed">Random Seed:</label>
+                <input type="number" id="random_seed" name="random_seed" value="{{ config.random_seed }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="tick_time">Tick Time (seconds):</label>
+                <input type="number" id="tick_time" name="tick_time" value="{{ config.get('tick_time', 1) }}" step="0.1" min="0.1" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="failure_probability">Failure Probability (0.0 - 1.0):</label>
+                <input type="number" id="failure_probability" name="failure_probability" value="{{ config.get('failure_probability', 0.1) }}" step="0.001" min="0" max="1" required>
+                <small style="color: #666;">Lower values = fewer failures (e.g., 0.01 = 1% chance per tick)</small>
+            </div>
+            
+            <div class="lines-config">
+                <h3>Failure Configuration</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="failure_status_min">Failure Status Min:</label>
+                        <input type="number" id="failure_status_min" name="failure_status_min" value="{{ config.get('failure_status_min', 4) }}" min="2" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="failure_status_max">Failure Status Max:</label>
+                        <input type="number" id="failure_status_max" name="failure_status_max" value="{{ config.get('failure_status_max', 6) }}" min="2" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="failure_duration_min">Failure Duration Min (seconds):</label>
+                        <input type="number" id="failure_duration_min" name="failure_duration_min" value="{{ config.get('failure_duration_min', 30) }}" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="failure_duration_max">Failure Duration Max (seconds):</label>
+                        <input type="number" id="failure_duration_max" name="failure_duration_max" value="{{ config.get('failure_duration_max', 120) }}" min="1" required>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="lines-config">
+                <h3>Production Lines Configuration</h3>
+                <input type="hidden" id="line_count" name="line_count" value="{{ config.lines|length }}">
+                
+                <div id="lines-container">
+                    {% for line_num, cell_count in config.lines.items() %}
+                    <div class="line-item">
+                        <label>Line {{ line_num }}:</label>
+                        <input type="number" name="line_{{ line_num }}_cells" value="{{ cell_count }}" min="1" max="10" required>
+                        <span style="margin-left: 10px;">cells</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <button type="button" class="add-line" onclick="addLine()">Add Line</button>
+            </div>
+            
+            <div class="buttons">
+                <button type="submit" class="btn-primary">Update Configuration</button>
+            </div>
+        </form>
+        
+        <div class="buttons">
+            <form method="POST" action="/start_simulator" style="display: inline;">
+                <button type="submit" class="btn-success" {% if is_running %}disabled{% endif %}>
+                    Start Simulator
+                </button>
+            </form>
+            
+            <form method="POST" action="/stop_simulator" style="display: inline;">
+                <button type="submit" class="btn-danger" {% if not is_running %}disabled{% endif %}>
+                    Stop Simulator
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let lineCount = {{ config.lines|length }};
+        
+        function addLine() {
+            lineCount++;
+            const container = document.getElementById('lines-container');
+            const lineItem = document.createElement('div');
+            lineItem.className = 'line-item';
+            lineItem.innerHTML = `
+                <label>Line ${lineCount}:</label>
+                <input type="number" name="line_${lineCount}_cells" value="1" min="1" max="10" required>
+                <span style="margin-left: 10px;">cells</span>
+            `;
+            container.appendChild(lineItem);
+            document.getElementById('line_count').value = lineCount;
+        }
+        
+        // Auto-refresh status every 2 seconds
+        setInterval(function() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    const statusDiv = document.querySelector('.status');
+                    if (data.is_running) {
+                        statusDiv.textContent = 'Status: Running';
+                        statusDiv.className = 'status running';
+                    } else {
+                        statusDiv.textContent = 'Status: Stopped';
+                        statusDiv.className = 'status stopped';
+                    }
+                });
+        }, 2000);
+    </script>
+</body>
+</html>
