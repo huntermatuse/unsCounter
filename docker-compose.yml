@@ -4,7 +4,7 @@ services:
     ports:
       - "18883:1883"
     volumes:
-      - ${HM_DATA_DIR}/mqtt_config:/mosquitto/config
+      - ./mqtt_config:/mosquitto/config
     restart: unless-stopped
     
   webui:
@@ -14,8 +14,8 @@ services:
     ports:
       - "19033:19033"
     volumes:
-      - ${HM_DATA_DIR}/config.json:/app/config.json
-      - ${HM_DATA_DIR}/templates:/app/templates
+      - ./config.json:/app/config.json
+      - ./templates:/app/templates
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
